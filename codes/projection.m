@@ -52,7 +52,7 @@ for i=1:20
 end
 %% plot the consumption choice as a function of k (for 3 values of z)
 figure
-c_L=exp(Psi(b_grid./maxb,coef_c_out));
+c_L=exp(Psi(b_grid./maxb,coef_c_out)-1)*(y_H+y_L);
 plot(b_grid,c_L);
 figure
 q=Phi(b_grid./maxb,coef_q_out);
