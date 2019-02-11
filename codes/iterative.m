@@ -45,7 +45,7 @@ stop_c=0;
     cL_new=interp1(bL_today,cL_today,bgrid,'linear','extrap');
     cH_new=interp1(bH_today,cH_today,bgrid,'linear','extrap');
     % Check borrowing constraint
-    bindingL=bgrid<bL_today;bindingH=bgrid<bH_today;
+    bindingL=bgrid<repmat(bL_today(1),nb,1);bindingH=bgrid<repmat(bH_today(1),nb,1);
     AUXL=yL+bgrid-q.*minb;AUXH=yH+bgrid-q.*minb;
     cL_new(bindingL) = AUXL(bindingL);cH_new(bindingH) = AUXH(bindingH);
     
