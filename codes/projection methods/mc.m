@@ -1,64 +1,28 @@
-% =====================================================================
-% This program solves the Aiyagari self-insurance model ===============
-% =====================================================================
-clear all
-clc
+function ssr=mc(coef)
+global beta sigma b_grid nb Py ny y_grid maxb minb eta
 
-% ======================================================================
-% ================        User Definition Area       ===================
-% ======================================================================
-
-nstates = 2;               % number of states for the efficiency shock.
-beta   = 0.965;             % subjective discount factor
-y=[0.9904 1.0470];
-prob   = [ .7412 , 0.2588 ; .7412 , 0.2588];  
-                           % prob(i,j) = probability (A(t+1)=Aj | A(t) =
-                           % Ai) - THIS NEEDS TO BE CONSISTENT WITH NSTATES
-
-sigma = 3;                 % Coefficient of relative risk-aversion.
-
-minb =   -1;             % minimum value of the capital grid
-maxb =  1;                % maximum value of the capital grid 
-nb   = 101;               % number of grid points             
-db=0.001;
-dq = 1;                    % sufficiently big initial difference of old and new r
-rcrit = 1e-3;              % Convergence criteria for r
-iterout = 0;               % initialize counter of iterations to 0     
+ 
 tolVFI=1e-3;               % Convergence criteria for VFI
 
-% the grid is now computed               
-bgrid = linspace(minb,maxb,nb)'; % grid equally spaced
-
-% ======================================================================
-% =========   THE MAIN LOOP STARTS HERE  ===============================       
-% ======================================================================
-
-q=ones(nb,1).*0.5;
-q_new=zeros(nb,1);
-while dq>rcrit
-    iterout = iterout+1;    % Count the number of iterations
+q=exp(Phi(b_grid./maxb,coef));
 
     % Form single period return function  
     % This is a hyper-matrix of dimension(nstates,nk,nk)
     % 1st dim is k', 2nd is k and 3rd is shock
     % In principle we set all values at -inf (you will see later why)
-        RR=-10000000*ones(nb,nb,nstates); 
+        RR=-10000000*ones(nb,nb,ny); 
         
     %  loop through all possible states (i.e. K) 
-    consump = zeros(nstates,1);
+    consump = zeros(ny,1);
     for i=1:nb
-        b=bgrid(i);
+        b=b_grid(i);
             %  loop through all possible controls (i.e. K')    
             for j=1:nb
-            bprime = bgrid(j);
+            bprime = b_grid(j);
                 % loop through all shocks
-                for l=1:nstates
+                for l=1:ny
                     % Compute consump for every possible state
-                    %if l==1
-                        consump = y(l)+b-q(i)*bprime;
-%                     elseif l==2
-%                         consump = y(l)-b+q(i)*bprime;
-%                     end
+                        consump = y_grid(l)+b-q(i)*bprime;
                     % Fill up matrix with utility for every state/control
                     if consump > 0
                         if sigma==1
@@ -74,10 +38,10 @@ while dq>rcrit
      end
 
     % initialize some variables
-        v       = zeros(nb,nstates);    % values
-        tv      = zeros(nb,nstates);    % new iteration values
-        decis   = zeros(nb,nstates);    % optimal policy for k' 
-        tdecis  = zeros(nb,nstates);    % new optimal policy for k'
+        v       = zeros(nb,ny);    % values
+        tv      = zeros(nb,ny);    % new iteration values
+        decis   = zeros(nb,ny);    % optimal policy for k' 
+        tdecis  = zeros(nb,ny);    % new optimal policy for k'
             % decis and tdecis tell you which is the optimal k' for every (s,k)
             % It doesn't tell you the value of k', but the position in the
             % grid! (therefore its filled with natural numbers)
@@ -93,10 +57,10 @@ while dq>rcrit
 
         while metric>tolVFI
             % Get the optimal policy for every posible state
-            for l=1:nstates                             % Loop on the shock
+            for l=1:ny                             % Loop on the shock
                 RRR=zeros(nb,nb);               
                 RRR(:,:)=RR(:,:,l);                     % Take the U(k,k') matrix
-                zz=RRR+beta*(v*prob(l,:)')*ones(1,nb);  % This is Bellman equation
+                zz=RRR+beta*(v*Py(l,:)')*ones(1,nb);  % This is Bellman equation
                 [tv(:,l),tdecis(:,l)] = max(zz);        % Maximize for every k.
             end            
             % Check convergence (both in policy and value function)
@@ -110,18 +74,18 @@ while dq>rcrit
         end
         
     % Compute the other optimal decisitions from the decision of k'
-        bdecis = zeros(nb,nstates); 
-        cdecis = zeros(nb,nstates);
+        bdecis = zeros(nb,ny); 
+        cdecis = zeros(nb,ny);
         %idecis = zeros(nb,nstates);
         %indecis = zeros(nb,nstates);
         for i1=1:size(tdecis,1)
             for i2=1:size(tdecis,2)
-                bdecis(i1,i2)  = bgrid(tdecis(i1,i2));
+                bdecis(i1,i2)  = b_grid(tdecis(i1,i2));
                     % Notice that kdecis containts the same information as
                     % tdecis (see above comment), but now it tells you the real
                     % value of i2' (a real number) that is optimal, 
                     % not the position of the grid
-                cdecis(i1,i2)  = y(i2)+bgrid(i1)-q(i1)*bdecis(i1,i2);
+                cdecis(i1,i2)  = y_grid(i2)+b_grid(i1)-q(i1)*bdecis(i1,i2);
                 %idecis(i1,i2)  = bdecis(i1,i2)- (1-delta)*bgrid(i1);
                 %indecis(i1,i2) = idecis(i1,i2) - delta*bgrid(i1);
             end
@@ -134,34 +98,7 @@ while dq>rcrit
 bL=bdecis(:,1);
 bH=fliplr(bdecis(:,2)')';
 
-
-ed=bH+bL;
-q_new=q+0.1*abs(ed);
-%     for i=1:nb
-%         if bH(i)>bL(i)
-%             q_new(i,1)=q(i,1)+0.1*abs(ed(i));
-%         elseif bH(i)<bL(i)
-%             q_new(i,1)=q(i,1)-0.1*abs(ed(i));
-%         end
-%     end
-    subplot(2,1,1)
-    plot(bgrid,q_new);
-    subplot(2,1,2)
-   plot(bgrid,bH-bL);
-    pause(0.1)
-    dq=abs(sum(q_new-q));
-    if dq>rcrit
-%         disp(['Initial r' '   ' 'Implied r'])
-%         disp([r rnew])
-        q = (q_new+q)/2;
-    end
+mktc=bH+bL;
+ssr=sum(mktc.^2);
 
 end
-% ======================================================================
-% =========   MAIN LOOP ENDS HERE  =====================================       
-% ======================================================================
-
-
-
-
-
