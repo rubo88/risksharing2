@@ -21,17 +21,15 @@ clc
     cL=yL+bgrid;cL(cL<=0)=0.0001;
     cH=yH-bgrid;cL(cH<=0)=0.0001;
     
-stop_c=0;
-%while stop_c==0
+
+%
     % Guess a price function
     q=ones(nb,1);
     
-    
-    
-    
-    stop_q=0;i=0;
-    while stop_q==0
-        i=i+1
+    stop_q=0;tol_q=10^(-6);crit_q=1;
+while crit_q>tol_q
+    stop_c=0; tol_c=10^(-6);crit_c=1;
+    while crit_c>tol_c    
     % RHS of EE
     rhsL=beta*eta*(cL).^(-gamma)+beta*(1-eta)*(cH).^(-gamma);
     rhsH=beta*eta*(cH).^(-gamma)+beta*(1-eta)*(cL).^(-gamma);
@@ -48,22 +46,20 @@ stop_c=0;
     bindingL=bgrid<bL_today;bindingH=bgrid<bH_today;
     AUXL=yL+bgrid-q.*minb;AUXH=yH+bgrid-q.*minb;
     cL_new(bindingL) = AUXL(bindingL);cH_new(bindingH) = AUXH(bindingH);
-    
-    qnew=q-(cL_new+cH_new>yH+yL).*(0.001)+(cL_new+cH_new<yH+yL).*(0.001);
-    %qnew=q-(bL_today>bH_today).*(0.01)+(bL_today<bH_today).*(0.01);
-    if sum(abs(qnew-q))<0.1
-        stop_q=1;
+    critL=max(max(abs(cL-cL_new)));critH=max(max(abs(cH-cH_new)));
+    crit_c = max([critL critH]);
+    cL=cL_new;cH=cH_new;
     end
+    
+    
+     qnew=q-(cL+cH>yH+yL).*(0.001)+(cL+cH<yH+yL).*(0.001);
+    %qnew=q-(bL_today>bH_today).*(0.01)+(bL_today<bH_today).*(0.01);
     plot(q)
     pause(0.1)
+    crit_q=max(abs(q-qnew));
     q=qnew;
-    end
     
-    cL=cLnew;cH=cHnew;
-    
-    
-    
-%end
+end
     
     
     
